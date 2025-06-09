@@ -1,28 +1,17 @@
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
-import threading
 
-#part1 inplace transformation
-def update_dict_string_leaves(d: dict, func: Callable, max_workers: int = 10) -> None:
-    """
-    Updates all string leaves in a nested dictionary in-place using parallel processing.
+#part1 of question 2 and 3 inplace transformation
+def update_dict_string_leaves(d: dict, func: Callable, max_workers: int = 4) -> None:
     
-    Args:
-        d: Nested dictionary to update
-        func: Function to apply to string values
-        max_workers: Number of worker threads (default=10)
-        
-    Returns:
-        Updated dictionary (modified in-place)
-    """
-    q = Queue()
-    q.put(d)  # Start with root dictionary
+    task_queue = Queue()
+    task_queue.put(d)  # Start with root dictionary
 
     def worker():
-        """Process dictionaries from the queue"""
+        #Process dictionaries from the queue
         while True:
-            item = q.get()
+            item = task_queue.get()
             if item is None:  # Termination signal
                 break
                 
@@ -30,14 +19,14 @@ def update_dict_string_leaves(d: dict, func: Callable, max_workers: int = 10) ->
             for key, value in item.items():
                 if isinstance(value, dict):
                     nested_dicts.append(value)
-                elif isinstance(value, str):
-                    item[key] = func(value)  # Update in-place
+                else:
+                    item[key] = func(value)  # Update 
             
             # Add nested dictionaries to queue
             for nd in nested_dicts:
-                q.put(nd)
+                task_queue.put(nd)
                 
-            q.task_done()
+            task_queue.task_done()
 
     # Create worker threads
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -45,34 +34,20 @@ def update_dict_string_leaves(d: dict, func: Callable, max_workers: int = 10) ->
         workers = [executor.submit(worker) for _ in range(max_workers)]
         
         # Wait until all dictionaries are processed
-        q.join()
+        task_queue.join()
         
         # Send termination signals to workers
         for _ in range(max_workers):
-            q.put(None)
+            task_queue.put(None)
             
         # Wait for workers to exit
         for w in workers:
             w.result()
 
+
 #part 2 non-mutating transformation
-def update_dict_string_leaves_non_mutating(
-    d: dict, 
-    func: Callable, 
-    max_workers: int = 10
-) -> dict:
-    """
-    Creates a transformed copy of a nested dictionary with string leaves modified by func.
-    Non-dict and non-string values are copied by reference (shallow copy).
-    
-    Args:
-        d: Input dictionary (nested structure)
-        func: Transformation function for string values
-        max_workers: Number of worker threads
-        
-    Returns:
-        New dictionary with transformed string leaves
-    """
+def update_dict_string_leaves_non_mutating(d: dict, func: Callable, max_workers: int = 4) -> dict:
+
     # Create root of new dictionary structure
     new_root = {}
     task_queue = Queue()
@@ -94,37 +69,37 @@ def update_dict_string_leaves_non_mutating(
                     new_dict[key] = new_nested
                     task_queue.put((value, new_nested))
                 else:
-                    # Shallow copy for non-dict/non-string values
+                    # Apply transformation to string leaves or copy other values
                     new_dict[key] = func(value)
             task_queue.task_done()
 
-    # Create and start worker threads
-    workers = []
-    for _ in range(max_workers):
-        t = threading.Thread(target=worker)
-        t.start()
-        workers.append(t)
-
-    # Wait until all dictionaries are processed
-    task_queue.join()
-
-    # Send termination signals to workers
-    for _ in range(max_workers):
-        task_queue.put(None)
+    # Create worker threads
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Start worker tasks
+        workers = [executor.submit(worker) for _ in range(max_workers)]
         
-    # Wait for all workers to finish
-    for t in workers:
-        t.join()
+        # Wait until all dictionaries are processed
+        task_queue.join()
+        
+        # Send termination signals to workers
+        for _ in range(max_workers):
+            task_queue.put(None)
+            
+        # Wait for workers to exit
+        for w in workers:
+            w.result()
 
     return new_root
 
-#Q1
+
+#Q1 check if the value is a string and double it
 def double_string(val: str) -> str:
     if isinstance(val, str):
         return val * 2
     else:
         return val
-#Q3
+    
+#Q3 check if the value is a list or string and double it
 def generalise_to_double_list(val) :
     if isinstance(val, list) or isinstance(val, str):
         return val * 2
