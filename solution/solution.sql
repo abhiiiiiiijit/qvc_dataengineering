@@ -21,9 +21,73 @@ GROUP BY ORDER_ID
 ORDER BY ORDER_SUM DESC
 
 
-------------------------------------------Q2--------------------------------------------
+------------------------------------------Q2--------------------------------------------WITH cte_all_rgb_parents AS (
+
+SELECT
+FID_PARENT_ARTICLE AS RGB_PARENTS,
+PID_ARTICLE AS CHILD_RGB,
+[NAME] AS ARTICLE_NAME
+FROM
+[dbo].[ARTICLE] AS a1 
+WHERE NAME IN ('RED', 'BLUE', 'GREEN')
 
 
+UNION ALL
+
+SELECT 
+a2.FID_PARENT_ARTICLE,
+a1.CHILD_RGB,
+a1.ARTICLE_NAME
+FROM 
+[dbo].[ARTICLE] AS a2
+INNER JOIN cte_all_rgb_parents AS a1
+ON a1.RGB_PARENTS = a2.PID_ARTICLE
+AND a2.FID_PARENT_ARTICLE IS NOT NULL
+
+)
+, cte_statr_part AS (
+SELECT 
+a.PID_ARTICLE,
+pl.FID_ARTICLE,
+pl.UNITS AS MULTIPLIER
+
+FROM [dbo].[ARTICLE] AS a 
+INNER JOIN [dbo].[PARTS_LIST] AS pl 
+ON a.PID_PARTS_LIST = pl.FID_PARTS_LIST
+AND a.[NAME] = 'BLOCKSET STARTER KIT'
+AND pl.FID_ARTICLE IN (SELECT CHILD_RGB FROM cte_all_rgb_parents)
+),
+cte_agg_all AS (
+SELECT
+RGB_PARENTS,
+CHILD_RGB,
+ARTICLE_NAME,
+COALESCE(MULTIPLIER, 1) AS MULTIPLIER
+FROM cte_all_rgb_parents AS ap 
+LEFT JOIN cte_statr_part AS sp
+ON ap.RGB_PARENTS = sp.PID_ARTICLE
+AND ap.CHILD_RGB = sp.FID_ARTICLE
+
+UNION 
+
+SELECT 
+CHILD_RGB,
+CHILD_RGB,
+ARTICLE_NAME,
+1
+FROM cte_all_rgb_parents
+)
+
+SELECT 
+agg.CHILD_RGB AS ARTICLE_ID,
+agg.ARTICLE_NAME,
+SUM(agg.MULTIPLIER * oi.UNTS)AS UNITS_SOLD
+FROM cte_agg_all AS agg
+LEFT JOIN [dbo].[ORDER_ITEM] AS oi 
+ON agg.RGB_PARENTS = oi.FID_ARTICLE
+GROUP BY 
+agg.CHILD_RGB,
+agg.ARTICLE_NAME
 
 
 -------------------------------------------Q3--------------------------------------------
