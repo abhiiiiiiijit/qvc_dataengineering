@@ -1,18 +1,21 @@
-----------------------------------Q1----------------------------------
-
+----------------------------------Ans1----------------------------------
+-- Calculate total order amounts for a specific date range
 WITH cte_orders AS(
+----Get all orders between '2019-01-02' AND '2019-01-04'
 SELECT 
 PID_ORDER
 FROM [dbo].[ORDERS]
 WHERE CAST(ORDER_TIME AS DATE) BETWEEN '2019-01-02' AND '2019-01-04'
 ), 
 cte_join AS(
+---Join orders with order items to calculate individual total order amounts
 SELECT 
 ord.PID_ORDER AS ORDER_ID,
 ord_itm.UNTS * ord_itm.UNITPRICE AS ORDER_SUM
 FROM cte_orders AS ord 
 LEFT JOIN [dbo].[ORDER_ITEM] AS ord_itm ON ord.PID_ORDER = ord_itm.FID_ORDERS
 )
+-- Aggregate the total order amounts by ORDER_ID
 SELECT 
 ORDER_ID,
 SUM(ORDER_SUM) AS ORDER_SUM
@@ -21,8 +24,10 @@ GROUP BY ORDER_ID
 ORDER BY ORDER_SUM DESC
 
 
-------------------------------------------Q2--------------------------------------------WITH cte_all_rgb_parents AS (
-
+------------------------------------------Ans2--------------------------------------------
+-- Retrieve RGB and hierarchy article's units sold
+WITH cte_all_rgb_parents AS (
+-- Recursive CTE to get all RGB parents and their children  (Parent, RGB Children, Article Name)
 SELECT
 FID_PARENT_ARTICLE AS RGB_PARENTS,
 PID_ARTICLE AS CHILD_RGB,
@@ -46,6 +51,7 @@ AND a2.FID_PARENT_ARTICLE IS NOT NULL
 
 )
 , cte_statr_part AS (
+-- Get the multiplier for the 'BLOCKSET STARTER KIT' article which has RGB parts
 SELECT 
 a.PID_ARTICLE,
 pl.FID_ARTICLE,
@@ -58,6 +64,7 @@ AND a.[NAME] = 'BLOCKSET STARTER KIT'
 AND pl.FID_ARTICLE IN (SELECT CHILD_RGB FROM cte_all_rgb_parents)
 ),
 cte_agg_all AS (
+-- Aggregate all RGB parents and their children with parents multipliers will will be 1.
 SELECT
 RGB_PARENTS,
 CHILD_RGB,
@@ -69,7 +76,7 @@ ON ap.RGB_PARENTS = sp.PID_ARTICLE
 AND ap.CHILD_RGB = sp.FID_ARTICLE
 
 UNION 
-
+--- Adding RGB itself as parent for ease of calculation
 SELECT 
 CHILD_RGB,
 CHILD_RGB,
@@ -77,7 +84,7 @@ ARTICLE_NAME,
 1
 FROM cte_all_rgb_parents
 )
-
+-- Calculate total units sold for each RGB article
 SELECT 
 agg.CHILD_RGB AS ARTICLE_ID,
 agg.ARTICLE_NAME,
@@ -90,11 +97,11 @@ agg.CHILD_RGB,
 agg.ARTICLE_NAME
 
 
--------------------------------------------Q3--------------------------------------------
-
+-------------------------------------------Ans3--------------------------------------------
+-- Calculate total sales for the top 3 articles in 2019 and compare with 2018
 WITH cte_2019_sum AS(
-
-SELECT TOP 3 WITH TIES
+-- Get the top 3 articles by total sales in 2019
+SELECT TOP 3 --WITH TIES in case you want to consider ties
 art.PID_ARTICLE,
 art.NAME,
 SUM(ord_itm.UNTS * ord_itm.UNITPRICE) AS SUM_2019
@@ -108,7 +115,7 @@ ORDER BY SUM_2019 DESC
 
 ), 
 cte_2018_sum AS(
-
+-- Get the total sales for the same articles in 2018
 SELECT 
 art.PID_ARTICLE,
 SUM(ord_itm.UNTS * ord_itm.UNITPRICE) AS SUM_2018
@@ -121,7 +128,7 @@ GROUP BY art.PID_ARTICLE,
 art.NAME
 
 )
-
+-- Final selection to compare 2019 and 2018 sales for the top articles
 SELECT 
 s9.PID_ARTICLE   AS Article_ID,
 s9.NAME          AS Article_Name,
