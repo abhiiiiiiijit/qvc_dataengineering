@@ -147,10 +147,13 @@ if __name__ == "__main__":
     1 : (2,3), 
 }
 
-    
+#Ans1: To transform a dictionary, I used threads to update values concurrently for efficiency considering highly nested dictionaries.
+#   A function that handles multi-threading and another one updates string leaves in a dictionary.
+
+
     print("Original dictionary d:", d)
 # Q2.1 Update string values 'a' -> 'aa'
-    update_dict_string_leaves(d, double_string, max_workers=4)
+    update_dict_string_leaves(d, double_string, max_workers=4) #2 or 4 max_workers works well for my system for large dictionaries
     print("Updated dictionary inplace 2.1:", d)
 # Q2.2 Non-mutating version
     new_d_2_2 = update_dict_string_leaves_non_mutating(d, double_string, max_workers=4)
@@ -158,7 +161,7 @@ if __name__ == "__main__":
     print("New dictionary with no mutation 2.2", new_d_2_2)
 
     print("Original dictionary d2:", d2)
-# Q3.1 Update string and list values 
+# Q3.1 Updates string and list values 
     update_dict_string_leaves(d2, generalise_to_double_list, max_workers=4)
     print("Updated dictionary inplace updating 3.1:", d2)
 # Q3.2 Non-mutating version of above
